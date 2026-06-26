@@ -45,4 +45,8 @@ app.use("/api/metrics", metricsRoutes);
 const eventsRouter = require("./modules/events/events.routes");
 app.use("/api/events", eventsRouter);
 
+// upload (protected)
+const uploadRoutes = require("./modules/upload/upload.routes");
+app.use("/api/upload", uploadRoutes);
+
 module.exports = app;

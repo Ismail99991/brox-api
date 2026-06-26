@@ -6,6 +6,8 @@ exports.getUsers = () => {
     select: {
       id: true,
       email: true,
+      avatarId: true,
+      avatar: true,
       createdAt: true,
     },
     orderBy: { createdAt: "desc" },
@@ -18,6 +20,8 @@ exports.getUserById = (id) => {
     select: {
       id: true,
       email: true,
+      avatarId: true,
+      avatar: true,
       createdAt: true,
     },
   });
@@ -28,7 +32,7 @@ exports.createUser = async ({ email, password }) => {
 
   return prisma.user.create({
     data: { email, passwordHash },
-    select: { id: true, email: true, createdAt: true },
+    select: { id: true, email: true, avatar: true, createdAt: true },
   });
 };
 
@@ -41,7 +45,7 @@ exports.updateUser = async (id, { email, password }) => {
   return prisma.user.update({
     where: { id },
     data,
-    select: { id: true, email: true, createdAt: true },
+    select: { id: true, email: true, avatar: true, createdAt: true },
   });
 };
 

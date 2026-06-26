@@ -34,6 +34,14 @@ enum ProductType {
   REQUEST_QUOTE
 }
 
+enum FileCategory {
+  AVATAR
+  PRODUCT_IMAGE
+  ORDER_DOCUMENT
+  QUOTE_ATTACHMENT
+  BRANDING
+}
+
 //
 // USERS
 //
@@ -42,6 +50,9 @@ model User {
   id           String @id @default(cuid())
   email        String @unique
   passwordHash String
+
+  avatarId String? @unique // FK to File (one-to-one)
+  avatar   File?   @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
@@ -95,7 +106,7 @@ model Product {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
-  images ProductImage[]
+  images File[] // вместо ProductImage[]
 
   attributes Json? // гибкие параметры (котлы, конфигураторы)
 
@@ -106,14 +117,7 @@ model Product {
   quoteRequests QuoteRequest[]
 }
 
-model ProductImage {
-  id String @id @default(cuid())
-
-  url       String
-  productId String
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-}
+// ProductImage удалён — заменён на File с category: PRODUCT_IMAGE
 
 //
 // ORDERS (B2B/B2C)
@@ -129,7 +133,8 @@ model Order {
 
   total Int @default(0)
 
-  items OrderItem[]
+  items     OrderItem[]
+  documents File[] // документы заказа
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -189,6 +194,8 @@ model QuoteRequest {
 
   payload Json? // конфигуратор котла
 
+  attachments File[] // вложения к заявке
+
   createdAt DateTime @default(now())
 }
 
@@ -209,14 +216,30 @@ model ActivityLog {
 }
 
 //
-// ADDITIONAL (future-proof)
+// FILES / S3
 //
 
 model File {
-  id String @id @default(cuid())
+  id        String       @id @default(cuid())
+  bucketKey String       // ключ в S3 (например "avatars/user123.jpg")
+  url       String       // публичный URL
+  mimeType  String       // image/png, application/pdf
+  size      Int          // размер в байтах
+  category  FileCategory
+  fileName  String       // оригинальное имя файла
 
-  url  String
-  type String
+  // Полиморфные связи (optional)
+  // UserAvatar — обратная связь, FK на стороне User (avatarId)
+  user      User?    @relation("UserAvatar")
+
+  productId String?  // для изображений товаров
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  orderId   String?  // для документов заказа
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  quoteId   String?  // для вложений заявки
+  quote     QuoteRequest? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }

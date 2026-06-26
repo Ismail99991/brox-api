@@ -65,6 +65,7 @@ exports.getOrders = () => {
     include: {
       items: true,
       user: true,
+      documents: true,
     },
     orderBy: {
       createdAt: "desc",
@@ -79,6 +80,7 @@ exports.getOrderById = (id) => {
     include: {
       items: true,
       user: true,
+      documents: true,
     },
   });
 };
