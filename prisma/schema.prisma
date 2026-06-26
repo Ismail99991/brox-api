@@ -88,11 +88,11 @@ model Category {
   id String @id @default(cuid())
 
   name        String
-  slug        String   @unique
+  slug        String  @unique
   title       String?
   description String?
 
-  imageId String? // FK to File (category image)
+  imageId String? @unique // FK to File (category image)
   image   File?   @relation("CategoryImage", fields: [imageId], references: [id], onDelete: SetNull)
 
   products Product[]
@@ -144,7 +144,7 @@ model Order {
   id String @id @default(cuid())
 
   userId String
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   status OrderStatus @default(CREATED)
 
@@ -161,7 +161,7 @@ model OrderItem {
   id String @id @default(cuid())
 
   orderId String
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   productId String
   product   Product @relation(fields: [productId], references: [id])
@@ -171,7 +171,7 @@ model OrderItem {
 }
 
 model Visit {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   path      String
   ip        String?
   userAgent String?
@@ -179,19 +179,21 @@ model Visit {
 
   createdAt DateTime @default(now())
 }
-model Event {
-  id        String   @id @default(cuid())
 
-  type      String   // "CLICK" | "QUOTE" | "ORDER" | "VIEW"
-  path      String?
+model Event {
+  id String @id @default(cuid())
+
+  type String // "CLICK" | "QUOTE" | "ORDER" | "VIEW"
+  path String?
 
   productId String?
   userId    String?
 
-  metadata  Json?
+  metadata Json?
 
   createdAt DateTime @default(now())
 }
+
 //
 // QUOTES / КП (очень важно для котлов и B2B)
 //
@@ -238,28 +240,28 @@ model ActivityLog {
 
 model File {
   id        String       @id @default(cuid())
-  bucketKey String       // ключ в S3 (например "avatars/user123.jpg")
-  url       String       // публичный URL
-  mimeType  String       // image/png, application/pdf
-  size      Int          // размер в байтах
+  bucketKey String // ключ в S3 (например "avatars/user123.jpg")
+  url       String // публичный URL
+  mimeType  String // image/png, application/pdf
+  size      Int // размер в байтах
   category  FileCategory
-  fileName  String       // оригинальное имя файла
+  fileName  String // оригинальное имя файла
 
   // Полиморфные связи (optional)
   // UserAvatar — обратная связь, FK на стороне User (avatarId)
-  user      User?    @relation("UserAvatar")
+  user User? @relation("UserAvatar")
 
   // CategoryImage — обратная связь, FK на стороне Category (imageId)
-  category Category? @relation("CategoryImage")
+  categoryImage Category? @relation("CategoryImage")
 
-  productId String?  // для изображений товаров
+  productId String? // для изображений товаров
   product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  orderId   String?  // для документов заказа
-  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId String? // для документов заказа
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  quoteId   String?  // для вложений заявки
-  quote     QuoteRequest? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quoteId String? // для вложений заявки
+  quote   QuoteRequest? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
