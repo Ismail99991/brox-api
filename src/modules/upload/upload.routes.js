@@ -10,6 +10,9 @@ const upload = multer({
 
 router.use(authMiddleware);
 
+// Универсальная загрузка файла
+router.post("/file", upload.single("file"), controller.uploadFile);
+
 // Загрузка через бэкенд (для маленьких файлов)
 router.post("/avatar", upload.single("file"), controller.uploadAvatar);
 

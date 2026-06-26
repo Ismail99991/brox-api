@@ -1,13 +1,9 @@
 const prisma = require("../../db/prisma");
 
-exports.getCategories = () => {
-  return prisma.category.findMany();
-};
-
 exports.getProducts = () => {
   return prisma.product.findMany({
     include: {
-      category: true,
+      category: { include: { image: true } },
       images: true,
     },
   });
@@ -17,7 +13,17 @@ exports.getProductBySlug = (slug) => {
   return prisma.product.findUnique({
     where: { slug },
     include: {
-      category: true,
+      category: { include: { image: true } },
+      images: true,
+    },
+  });
+};
+
+exports.getProductById = (id) => {
+  return prisma.product.findUnique({
+    where: { id },
+    include: {
+      category: { include: { image: true } },
       images: true,
     },
   });

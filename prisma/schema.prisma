@@ -34,9 +34,15 @@ enum ProductType {
   REQUEST_QUOTE
 }
 
+enum PriceType {
+  FIXED
+  QUOTE
+}
+
 enum FileCategory {
   AVATAR
   PRODUCT_IMAGE
+  CATEGORY_IMAGE
   ORDER_DOCUMENT
   QUOTE_ATTACHMENT
   BRANDING
@@ -81,12 +87,18 @@ model Session {
 model Category {
   id String @id @default(cuid())
 
-  name String
-  slug String @unique
+  name        String
+  slug        String   @unique
+  title       String?
+  description String?
+
+  imageId String? // FK to File (category image)
+  image   File?   @relation("CategoryImage", fields: [imageId], references: [id], onDelete: SetNull)
 
   products Product[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Product {
@@ -99,7 +111,12 @@ model Product {
 
   type ProductType @default(SIMPLE)
 
-  price Int?
+  priceType PriceType @default(FIXED)
+  price     Float?
+
+  characteristics Json? // массив { key, value }
+
+  article String?
 
   isActive Boolean @default(true)
 
@@ -231,6 +248,9 @@ model File {
   // Полиморфные связи (optional)
   // UserAvatar — обратная связь, FK на стороне User (avatarId)
   user      User?    @relation("UserAvatar")
+
+  // CategoryImage — обратная связь, FK на стороне Category (imageId)
+  category Category? @relation("CategoryImage")
 
   productId String?  // для изображений товаров
   product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)

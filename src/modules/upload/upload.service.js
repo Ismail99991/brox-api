@@ -8,6 +8,7 @@ const prisma = require("../../db/prisma");
 const ALLOWED_MIME_TYPES = {
   AVATAR: ["image/jpeg", "image/png", "image/webp"],
   PRODUCT_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/avif"],
+  CATEGORY_IMAGE: ["image/jpeg", "image/png", "image/webp", "image/avif"],
   ORDER_DOCUMENT: ["application/pdf", "image/jpeg", "image/png"],
   QUOTE_ATTACHMENT: ["application/pdf", "image/jpeg", "image/png", "application/x-zip-compressed"],
 };
@@ -15,6 +16,7 @@ const ALLOWED_MIME_TYPES = {
 const MAX_FILE_SIZES = {
   AVATAR: 5 * 1024 * 1024,       // 5 MB
   PRODUCT_IMAGE: 10 * 1024 * 1024, // 10 MB
+  CATEGORY_IMAGE: 10 * 1024 * 1024, // 10 MB
   ORDER_DOCUMENT: 50 * 1024 * 1024, // 50 MB
   QUOTE_ATTACHMENT: 50 * 1024 * 1024,
 };
@@ -24,6 +26,7 @@ function generateKey(category, userId, ext) {
   const prefix = {
     AVATAR: `avatars/${userId}`,
     PRODUCT_IMAGE: `products/${uuid}`,
+    CATEGORY_IMAGE: `categories/${uuid}`,
     ORDER_DOCUMENT: `orders/${uuid}`,
     QUOTE_ATTACHMENT: `quotes/${uuid}`,
   };

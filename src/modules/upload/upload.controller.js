@@ -1,6 +1,31 @@
 const service = require("./upload.service");
 const prisma = require("../../db/prisma");
 
+// Универсальная загрузка файла
+exports.uploadFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file provided" });
+    }
+
+    const { buffer, mimetype, originalname } = req.file;
+    const { category, productId } = req.body;
+
+    const file = await service.uploadFile({
+      buffer,
+      mimeType: mimetype,
+      originalName: originalname,
+      category: category || "PRODUCT_IMAGE",
+      userId: req.user.userId,
+      productId,
+    });
+
+    res.json(file);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+};
+
 // Загрузка аватара пользователя
 exports.uploadAvatar = async (req, res) => {
   try {
