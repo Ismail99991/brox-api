@@ -3,6 +3,8 @@ const controller = require("./admin.controller");
 const categoryController = require("../catalog/category.controller");
 
 // Categories
+router.get("/categories", categoryController.getAll);
+router.get("/categories/:id", categoryController.getById);
 router.post("/categories", categoryController.create);
 router.put("/categories/:id", categoryController.update);
 router.delete("/categories/:id", categoryController.remove);

@@ -16,7 +16,6 @@ exports.uploadFile = async (req, res) => {
       mimeType: mimetype,
       originalName: originalname,
       category: category || "PRODUCT_IMAGE",
-      userId: req.user.userId,
       productId,
     });
 
@@ -51,7 +50,6 @@ exports.uploadAvatar = async (req, res) => {
       mimeType: mimetype,
       originalName: originalname,
       category: "AVATAR",
-      userId: req.user.userId,
     });
 
     // Обновляем пользователя
@@ -79,7 +77,6 @@ exports.getPresignedUrl = async (req, res) => {
     const result = await service.getPresignedUploadUrl({
       category,
       mimeType,
-      userId: req.user.userId,
       productId,
       orderId,
       quoteId,
@@ -102,7 +99,6 @@ exports.confirmUpload = async (req, res) => {
       size,
       originalName,
       category,
-      userId: req.user.userId,
       productId,
       orderId,
       quoteId,

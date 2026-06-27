@@ -21,10 +21,10 @@ const MAX_FILE_SIZES = {
   QUOTE_ATTACHMENT: 50 * 1024 * 1024,
 };
 
-function generateKey(category, userId, ext) {
+function generateKey(category, ext, userId) {
   const uuid = crypto.randomUUID();
   const prefix = {
-    AVATAR: `avatars/${userId}`,
+    AVATAR: `avatars/${userId || uuid}`,
     PRODUCT_IMAGE: `products/${uuid}`,
     CATEGORY_IMAGE: `categories/${uuid}`,
     ORDER_DOCUMENT: `orders/${uuid}`,
@@ -41,7 +41,7 @@ exports.uploadFile = async ({ buffer, mimeType, originalName, category, userId, 
   }
 
   const ext = mimeType.split("/")[1];
-  const bucketKey = generateKey(category, userId, ext);
+  const bucketKey = generateKey(category, ext, userId);
 
   await s3.send(new PutObjectCommand({
     Bucket: config.s3.bucket,
@@ -58,10 +58,9 @@ exports.uploadFile = async ({ buffer, mimeType, originalName, category, userId, 
       size: buffer.length,
       category,
       fileName: originalName,
-      userId,
-      productId,
-      orderId,
-      quoteId,
+      ...(productId ? { product: { connect: { id: productId } } } : undefined),
+      ...(orderId ? { order: { connect: { id: orderId } } } : undefined),
+      ...(quoteId ? { quote: { connect: { id: quoteId } } } : undefined),
     },
   });
 
@@ -69,14 +68,14 @@ exports.uploadFile = async ({ buffer, mimeType, originalName, category, userId, 
 };
 
 // Presigned URL для прямой загрузки (для больших файлов)
-exports.getPresignedUploadUrl = async ({ category, mimeType, userId, productId, orderId, quoteId }) => {
+exports.getPresignedUploadUrl = async ({ category, mimeType, productId, orderId, quoteId }) => {
   const allowed = ALLOWED_MIME_TYPES[category];
   if (!allowed?.includes(mimeType)) {
     throw new Error(`File type ${mimeType} not allowed for ${category}`);
   }
 
   const ext = mimeType.split("/")[1];
-  const bucketKey = generateKey(category, userId, ext);
+  const bucketKey = generateKey(category, ext);
 
   const command = new PutObjectCommand({
     Bucket: config.s3.bucket,
@@ -90,7 +89,7 @@ exports.getPresignedUploadUrl = async ({ category, mimeType, userId, productId, 
 };
 
 // Подтверждение загрузки по presigned URL
-exports.confirmUpload = async ({ bucketKey, mimeType, size, originalName, category, userId, productId, orderId, quoteId }) => {
+exports.confirmUpload = async ({ bucketKey, mimeType, size, originalName, category, productId, orderId, quoteId }) => {
   return prisma.file.create({
     data: {
       bucketKey,
@@ -99,10 +98,9 @@ exports.confirmUpload = async ({ bucketKey, mimeType, size, originalName, catego
       size,
       category,
       fileName: originalName,
-      userId,
-      productId,
-      orderId,
-      quoteId,
+      ...(productId ? { product: { connect: { id: productId } } } : undefined),
+      ...(orderId ? { order: { connect: { id: orderId } } } : undefined),
+      ...(quoteId ? { quote: { connect: { id: quoteId } } } : undefined),
     },
   });
 };
