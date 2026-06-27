@@ -11,6 +11,10 @@ exports.authMiddleware = (req, res, next) => {
 
   const token = header.split(" ")[1];
 
+  if (!token || token.trim() === "") {
+    return res.status(401).json({ error: "empty token" });
+  }
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
