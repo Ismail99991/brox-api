@@ -1,18 +1,27 @@
 const service = require("./orders.service");
 
-// CREATE
+// CREATE (маркет-пользователь)
 exports.create = async (req, res) => {
   try {
-    const order = await service.createOrder(req.body);
-    res.json(order);
+    const order = await service.createOrder({
+      marketUserId: req.marketUser.marketUserId,
+      items: req.body.items,
+    });
+    res.status(201).json(order);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 };
 
-// GET ALL
+// GET ALL (CRM — все заказы)
 exports.getAll = async (req, res) => {
   const data = await service.getOrders();
+  res.json(data);
+};
+
+// GET MY ORDERS (маркет-пользователь)
+exports.getMyOrders = async (req, res) => {
+  const data = await service.getMyOrders(req.marketUser.marketUserId);
   res.json(data);
 };
 
@@ -23,20 +32,17 @@ exports.getOne = async (req, res) => {
   res.json(data);
 };
 
-// UPDATE STATUS
+// UPDATE STATUS (CRM)
 exports.updateStatus = async (req, res) => {
   try {
-    const data = await service.updateStatus(
-      req.params.id,
-      req.body.status
-    );
+    const data = await service.updateStatus(req.params.id, req.body.status);
     res.json(data);
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 };
 
-// DELETE
+// DELETE (CRM)
 exports.remove = async (req, res) => {
   const data = await service.deleteOrder(req.params.id);
   res.json(data);

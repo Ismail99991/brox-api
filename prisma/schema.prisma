@@ -11,11 +11,11 @@ datasource db {
 // ENUMS
 //
 
-enum UserRole {
+enum CrmRole {
   SUPERADMIN
   ADMIN
-  CLIENT
-  PERFORMER
+  MANAGER
+  LOGIST
 }
 
 enum OrderStatus {
@@ -49,35 +49,63 @@ enum FileCategory {
 }
 
 //
-// USERS
+// CRM — СОТРУДНИКИ КОМПАНИИ
+// Доступ: только по приглашению администратора
 //
 
-model User {
+model CrmUser {
   id           String @id @default(cuid())
   email        String @unique
   passwordHash String
+  name         String?
+  role         CrmRole @default(MANAGER)
 
-  avatarId String? @unique // FK to File (one-to-one)
-  avatar   File?   @relation("UserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
+  avatarId String? @unique
+  avatar   File?   @relation("CrmUserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  sessions Session[]
-  orders   Order[]
-  quotes   QuoteRequest[]
-  logs     ActivityLog[]
+  sessions   CrmSession[]
+  logs       ActivityLog[]
 }
 
-model Session {
+model CrmSession {
   id String @id @default(cuid())
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  crmUserId String
+  crmUser   CrmUser @relation(fields: [crmUserId], references: [id], onDelete: Cascade)
 
   token     String   @unique
   expiresAt DateTime
 
   createdAt DateTime @default(now())
+}
+
+//
+// MARKET — КЛИЕНТЫ (B2B-покупатели)
+// Доступ: самостоятельная регистрация
+//
+
+model MarketUser {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+
+  name  String?
+  phone String?
+
+  avatarId String? @unique
+  avatar   File?   @relation("MarketUserAvatar", fields: [avatarId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders         Order[]
+  quotes         QuoteRequest[]
+  favorites      Favorite[]
+  cartItems      CartItem[]
+  passwordTokens PasswordResetToken[]
 }
 
 //
@@ -92,7 +120,7 @@ model Category {
   title       String?
   description String?
 
-  imageId String? @unique // FK to File (category image)
+  imageId String? @unique
   image   File?   @relation("CategoryImage", fields: [imageId], references: [id], onDelete: SetNull)
 
   products Product[]
@@ -114,7 +142,7 @@ model Product {
   priceType PriceType @default(FIXED)
   price     Float?
 
-  characteristics Json? // массив { key, value }
+  characteristics Json? // [{ key, value }]
 
   article String?
 
@@ -123,35 +151,35 @@ model Product {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
-  images File[] // вместо ProductImage[]
+  images File[]
 
-  attributes Json? // гибкие параметры (котлы, конфигураторы)
+  attributes Json? // гибкие параметры
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   orderItems    OrderItem[]
   quoteRequests QuoteRequest[]
+  favorites     Favorite[]
+  cartItems     CartItem[]
 }
 
-// ProductImage удалён — заменён на File с category: PRODUCT_IMAGE
-
 //
-// ORDERS (B2B/B2C)
+// ORDERS (B2B — привязаны к MarketUser)
 //
 
 model Order {
   id String @id @default(cuid())
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  marketUserId String
+  marketUser   MarketUser @relation(fields: [marketUserId], references: [id])
 
   status OrderStatus @default(CREATED)
 
   total Int @default(0)
 
   items     OrderItem[]
-  documents File[] // документы заказа
+  documents File[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -170,6 +198,10 @@ model OrderItem {
   price    Int
 }
 
+//
+// VISITS & EVENTS (аналитика)
+//
+
 model Visit {
   id        String  @id @default(cuid())
   path      String
@@ -187,7 +219,7 @@ model Event {
   path String?
 
   productId String?
-  userId    String?
+  marketUserId String?
 
   metadata Json?
 
@@ -195,14 +227,14 @@ model Event {
 }
 
 //
-// QUOTES / КП (очень важно для котлов и B2B)
+// QUOTES / КП (B2B — привязаны к MarketUser)
 //
 
 model QuoteRequest {
   id String @id @default(cuid())
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  marketUserId String
+  marketUser   MarketUser @relation(fields: [marketUserId], references: [id])
 
   productId String?
   product   Product? @relation(fields: [productId], references: [id])
@@ -213,20 +245,83 @@ model QuoteRequest {
 
   payload Json? // конфигуратор котла
 
-  attachments File[] // вложения к заявке
+  attachments File[]
 
   createdAt DateTime @default(now())
 }
 
 //
-// LOGS / ANALYTICS
+// FAVORITES (маркет)
+//
+
+model Favorite {
+  id        String   @id @default(cuid())
+  marketUserId    String
+  marketUser      MarketUser @relation(fields: [marketUserId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([marketUserId, productId])
+}
+
+//
+// CART (маркет)
+//
+
+model CartItem {
+  id        String   @id @default(cuid())
+  marketUserId    String
+  marketUser      MarketUser @relation(fields: [marketUserId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([marketUserId, productId])
+}
+
+//
+// PASSWORD RESET (маркет)
+//
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  marketUserId    String
+  marketUser      MarketUser @relation(fields: [marketUserId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+//
+// CALLBACK (публичная форма)
+//
+
+model CallbackRequest {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  comment   String?
+  status    String   @default("NEW")
+
+  createdAt DateTime @default(now())
+}
+
+//
+// LOGS (CRM)
 //
 
 model ActivityLog {
   id String @id @default(cuid())
 
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  crmUserId String?
+  crmUser   CrmUser? @relation(fields: [crmUserId], references: [id])
 
   action String
   meta   Json?
@@ -240,27 +335,29 @@ model ActivityLog {
 
 model File {
   id        String       @id @default(cuid())
-  bucketKey String // ключ в S3 (например "avatars/user123.jpg")
-  url       String // публичный URL
-  mimeType  String // image/png, application/pdf
-  size      Int // размер в байтах
+  bucketKey String
+  url       String
+  mimeType  String
+  size      Int
   category  FileCategory
-  fileName  String // оригинальное имя файла
+  fileName  String
 
-  // Полиморфные связи (optional)
-  // UserAvatar — обратная связь, FK на стороне User (avatarId)
-  user User? @relation("UserAvatar")
+  // CRM avatar
+  crmAvatar CrmUser? @relation("CrmUserAvatar")
 
-  // CategoryImage — обратная связь, FK на стороне Category (imageId)
+  // Market avatar
+  marketAvatar MarketUser? @relation("MarketUserAvatar")
+
+  // Category image
   categoryImage Category? @relation("CategoryImage")
 
-  productId String? // для изображений товаров
+  productId String?
   product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  orderId String? // для документов заказа
+  orderId String?
   order   Order?  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  quoteId String? // для вложений заявки
+  quoteId String?
   quote   QuoteRequest? @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())

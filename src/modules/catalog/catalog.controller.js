@@ -1,8 +1,9 @@
 const service = require("./catalog.service");
 
 exports.getProducts = async (req, res) => {
-  const data = await service.getProducts();
-  res.json(data);
+  const data = await service.getProducts(req.query);
+  const total = await service.getProductsCount(req.query);
+  res.json({ data, total, page: parseInt(req.query.page) || 1, limit: Math.min(parseInt(req.query.limit) || 50, 100) });
 };
 
 exports.getProductBySlug = async (req, res) => {

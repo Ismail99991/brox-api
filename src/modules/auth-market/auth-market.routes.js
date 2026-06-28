@@ -1,6 +1,6 @@
 const router = require("express").Router();
-const controller = require("./auth.controller");
-const { authMiddleware } = require("./auth.middleware");
+const controller = require("./auth-market.controller");
+const { marketAuthMiddleware } = require("../middleware/marketAuth.middleware");
 
 // Публичные
 router.post("/register", controller.register);
@@ -9,7 +9,7 @@ router.post("/forgot-password", controller.forgotPassword);
 router.post("/reset-password", controller.resetPassword);
 
 // Защищённые
-router.get("/me", authMiddleware, controller.getMe);
-router.put("/profile", authMiddleware, controller.updateProfile);
+router.get("/profile", marketAuthMiddleware, controller.getProfile);
+router.put("/profile", marketAuthMiddleware, controller.updateProfile);
 
 module.exports = router;

@@ -3,47 +3,41 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
-const JWT_SECRET = process.env.JWT_SECRET || "brox-dev-secret";
+const JWT_SECRET = process.env.MARKET_JWT_SECRET || "market-dev-secret-change-in-production";
 
-// ========== REGISTER ==========
-
+// Регистрация нового клиента
 exports.register = async ({ email, password, name, phone }) => {
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    throw new Error("Email already in use");
-  }
+  const existing = await prisma.marketUser.findUnique({ where: { email } });
+  if (existing) throw new Error("Email already in use");
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
+  const user = await prisma.marketUser.create({
     data: { email, passwordHash, name, phone },
     select: { id: true, email: true, name: true, phone: true, createdAt: true },
   });
 
   const token = jwt.sign(
-    { userId: user.id, email: user.email },
+    { marketUserId: user.id, email: user.email },
     JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "30d" }
   );
 
   return { ok: true, token, user };
 };
 
-// ========== LOGIN ==========
-
+// Логин клиента
 exports.login = async (email, password) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-
+  const user = await prisma.marketUser.findUnique({ where: { email } });
   if (!user) return { ok: false };
 
   const match = await bcrypt.compare(password, user.passwordHash);
-
   if (!match) return { ok: false };
 
   const token = jwt.sign(
-    { userId: user.id, email: user.email },
+    { marketUserId: user.id, email: user.email },
     JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "30d" }
   );
 
   return {
@@ -58,57 +52,49 @@ exports.login = async (email, password) => {
   };
 };
 
-// ========== GET ME ==========
-
-exports.getMe = async (userId) => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
+// Получить профиль
+exports.getProfile = async (marketUserId) => {
+  return prisma.marketUser.findUnique({
+    where: { id: marketUserId },
     select: { id: true, email: true, name: true, phone: true, createdAt: true },
   });
-  return user;
 };
 
-// ========== UPDATE PROFILE ==========
-
-exports.updateProfile = async (userId, data) => {
+// Обновить профиль
+exports.updateProfile = async (marketUserId, data) => {
   const updateData = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.phone !== undefined) updateData.phone = data.phone;
   if (data.email !== undefined) updateData.email = data.email;
 
-  return prisma.user.update({
-    where: { id: userId },
+  return prisma.marketUser.update({
+    where: { id: marketUserId },
     data: updateData,
     select: { id: true, email: true, name: true, phone: true, createdAt: true },
   });
 };
 
-// ========== FORGOT PASSWORD ==========
-
+// Запрос на сброс пароля
 exports.forgotPassword = async (email) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return { ok: true }; // не раскрываем, есть ли пользователь
+  const user = await prisma.marketUser.findUnique({ where: { email } });
+  if (!user) return { ok: true };
 
-  // Инвалидируем старые токены
   await prisma.passwordResetToken.updateMany({
-    where: { userId: user.id, used: false },
+    where: { marketUserId: user.id, used: false },
     data: { used: true },
   });
 
   const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 час
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
   await prisma.passwordResetToken.create({
-    data: { userId: user.id, token, expiresAt },
+    data: { marketUserId: user.id, token, expiresAt },
   });
 
-  // В реальном проекте здесь отправка email
-  // Пока возвращаем токен в ответе (для разработки)
   return { ok: true, resetToken: token };
 };
 
-// ========== RESET PASSWORD ==========
-
+// Сброс пароля
 exports.resetPassword = async (token, newPassword) => {
   const resetToken = await prisma.passwordResetToken.findUnique({
     where: { token },
@@ -121,8 +107,8 @@ exports.resetPassword = async (token, newPassword) => {
   const passwordHash = await bcrypt.hash(newPassword, 10);
 
   await prisma.$transaction([
-    prisma.user.update({
-      where: { id: resetToken.userId },
+    prisma.marketUser.update({
+      where: { id: resetToken.marketUserId },
       data: { passwordHash },
     }),
     prisma.passwordResetToken.update({

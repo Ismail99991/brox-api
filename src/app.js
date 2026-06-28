@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const { authMiddleware } = require("./modules/auth/auth.middleware");
 
 const app = express();
 
@@ -10,9 +9,12 @@ const app = express();
 app.use((req, res, next) => {
   const auth = req.headers["authorization"];
   if (auth) {
-    // remove any control characters (0x00-0x1F, 0x7F) and keep only printable ASCII
     const sanitized = auth.replace(/[\x00-\x1F\x7F]/g, "").trim();
-    req.headers["authorization"] = sanitized;
+    if (!sanitized || !sanitized.startsWith("Bearer ")) {
+      delete req.headers["authorization"];
+    } else {
+      req.headers["authorization"] = sanitized;
+    }
   }
   next();
 });
@@ -25,38 +27,57 @@ app.use(morgan("dev"));
 
 // health
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", service: "brox-api" });
+  res.json({ status: "ok", service: "techsteam-api" });
 });
 
-// catalog (public)
+// ============================================================
+// PUBLIC — каталог (доступен всем без авторизации)
+// ============================================================
 const catalogRoutes = require("./modules/catalog/catalog.routes");
 app.use("/api", catalogRoutes);
 
-// auth (public)
-const authRoutes = require("./modules/auth/auth.routes");
-app.use("/api/auth", authRoutes);
+// ============================================================
+// CRM — только для сотрудников (отдельный JWT)
+// ============================================================
+const crmAuthRoutes = require("./modules/auth-crm/auth-crm.routes");
+app.use("/api/crm/auth", crmAuthRoutes);
 
-// admin (protected)
 const adminRoutes = require("./modules/admin/admin.routes");
-app.use("/api/admin", authMiddleware, adminRoutes);
+const { crmAuthMiddleware } = require("./modules/middleware/crmAuth.middleware");
+app.use("/api/admin", crmAuthMiddleware, adminRoutes);
 
-// orders (protected)
+// ============================================================
+// MARKET — для клиентов (отдельный JWT)
+// ============================================================
+const marketAuthRoutes = require("./modules/auth-market/auth-market.routes");
+app.use("/api/market/auth", marketAuthRoutes);
+
+const { marketAuthMiddleware } = require("./modules/middleware/marketAuth.middleware");
+
+const favoritesRoutes = require("./modules/favorites/favorites.routes");
+app.use("/api/market/favorites", marketAuthMiddleware, favoritesRoutes);
+
+const cartRoutes = require("./modules/cart/cart.routes");
+app.use("/api/market/cart", marketAuthMiddleware, cartRoutes);
+
 const ordersRoutes = require("./modules/orders/orders.routes");
-app.use("/api/orders", authMiddleware, ordersRoutes);
+app.use("/api/market/orders", ordersRoutes); // /my — защищён внутри
 
-// users (protected)
-const usersRoutes = require("./modules/users/users.routes");
-app.use("/api/users", usersRoutes);
+const ctaRoutes = require("./modules/cta/cta.routes");
+app.use("/api/market", ctaRoutes); // /callback — публичный, /quote-request — защищён
 
-// metrics (public for tracking)
+// ============================================================
+// ANALYTICS / METRICS
+// ============================================================
 const metricsRoutes = require("./modules/metrics/metrics.routes");
 app.use("/api/metrics", metricsRoutes);
 
-// events
 const eventsRouter = require("./modules/events/events.routes");
 app.use("/api/events", eventsRouter);
 
-// upload (protected)
+// ============================================================
+// UPLOAD (S3)
+// ============================================================
 const uploadRoutes = require("./modules/upload/upload.routes");
 app.use("/api/upload", uploadRoutes);
 

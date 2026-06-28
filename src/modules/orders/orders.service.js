@@ -1,6 +1,5 @@
 const prisma = require("../../db/prisma");
 
-// статус переходов
 const allowedTransitions = {
   CREATED: ["PENDING", "CANCELED"],
   PENDING: ["PAID", "CANCELED"],
@@ -11,8 +10,8 @@ const allowedTransitions = {
   CANCELED: [],
 };
 
-// CREATE ORDER
-exports.createOrder = async ({ userId, items }) => {
+// CREATE ORDER (для маркет-пользователя)
+exports.createOrder = async ({ marketUserId, items }) => {
   if (!items?.length) {
     throw new Error("No items in order");
   }
@@ -31,45 +30,48 @@ exports.createOrder = async ({ userId, items }) => {
 
   const enrichedItems = items.map(i => {
     const product = products.find(p => p.id === i.productId);
-
     const quantity = i.quantity || 1;
     const price = product.price;
-
     total += price * quantity;
-
-    return {
-      productId: product.id,
-      quantity,
-      price,
-    };
+    return { productId: product.id, quantity, price };
   });
 
   return prisma.order.create({
     data: {
-      userId,
+      marketUserId,
       total,
       status: "CREATED",
-      items: {
-        create: enrichedItems,
-      },
+      items: { create: enrichedItems },
     },
     include: {
-      items: true,
+      items: { include: { product: true } },
     },
   });
 };
 
-// GET ALL ORDERS
+// GET ALL ORDERS (для CRM — все заказы)
 exports.getOrders = () => {
   return prisma.order.findMany({
     include: {
-      items: true,
-      user: true,
+      items: { include: { product: true } },
+      marketUser: {
+        select: { id: true, email: true, name: true, phone: true },
+      },
       documents: true,
     },
-    orderBy: {
-      createdAt: "desc",
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+// GET MY ORDERS (для маркет-пользователя)
+exports.getMyOrders = (marketUserId) => {
+  return prisma.order.findMany({
+    where: { marketUserId },
+    include: {
+      items: { include: { product: true } },
+      documents: true,
     },
+    orderBy: { createdAt: "desc" },
   });
 };
 
@@ -78,29 +80,23 @@ exports.getOrderById = (id) => {
   return prisma.order.findUnique({
     where: { id },
     include: {
-      items: true,
-      user: true,
+      items: { include: { product: true } },
+      marketUser: {
+        select: { id: true, email: true, name: true, phone: true },
+      },
       documents: true,
     },
   });
 };
 
-// UPDATE STATUS (SAFE)
+// UPDATE STATUS
 exports.updateStatus = async (orderId, newStatus) => {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-  });
-
-  if (!order) {
-    throw new Error("Order not found");
-  }
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new Error("Order not found");
 
   const allowed = allowedTransitions[order.status];
-
   if (!allowed.includes(newStatus)) {
-    throw new Error(
-      `Invalid transition: ${order.status} → ${newStatus}`
-    );
+    throw new Error(`Invalid transition: ${order.status} → ${newStatus}`);
   }
 
   return prisma.order.update({
@@ -111,7 +107,5 @@ exports.updateStatus = async (orderId, newStatus) => {
 
 // DELETE ORDER
 exports.deleteOrder = (id) => {
-  return prisma.order.delete({
-    where: { id },
-  });
+  return prisma.order.delete({ where: { id } });
 };
