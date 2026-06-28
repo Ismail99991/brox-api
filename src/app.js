@@ -81,4 +81,12 @@ app.use("/api/events", eventsRouter);
 const uploadRoutes = require("./modules/upload/upload.routes");
 app.use("/api/upload", uploadRoutes);
 
+// ============================================================
+// Глобальный обработчик ошибок (Express 5 не ловит rejected promises)
+// ============================================================
+app.use((err, req, res, next) => {
+  console.error("[unhandled error]", err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
 module.exports = app;
