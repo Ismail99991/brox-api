@@ -342,6 +342,17 @@ model File {
   category  FileCategory
   fileName  String
 
+  // === Image optimization fields (for PRODUCT_IMAGE & CATEGORY_IMAGE) ===
+  thumbnailKey String? // 400×300 cover
+  cardKey      String? // 900×700 cover
+  heroKey      String? // max 2000×1400 inside
+
+  originalName     String? // original filename
+  originalMimeType String? // original MIME type before conversion
+  originalSizeBytes Int?   // original file size in bytes
+  width             Int?   // original image width
+  height            Int?   // original image height
+
   // CRM avatar
   crmAvatar CrmUser? @relation("CrmUserAvatar")
 

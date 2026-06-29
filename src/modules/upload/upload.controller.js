@@ -1,7 +1,7 @@
 const service = require("./upload.service");
 const prisma = require("../../db/prisma");
 
-// Универсальная загрузка файла
+// Универсальная загрузка файла (с оптимизацией для изображений)
 exports.uploadFile = async (req, res) => {
   try {
     if (!req.file) {
@@ -21,7 +21,8 @@ exports.uploadFile = async (req, res) => {
 
     res.json(file);
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    console.error("[upload.controller] uploadFile error:", e.stack || e.message);
+    res.status(400).json({ error: e.message || "Upload failed" });
   }
 };
 
@@ -65,7 +66,8 @@ exports.uploadAvatar = async (req, res) => {
 
     res.json(user);
   } catch (e) {
-    res.status(400).json({ error: e.message });
+    console.error("[upload.controller] uploadAvatar error:", e.stack || e.message);
+    res.status(400).json({ error: e.message || "Avatar upload failed" });
   }
 };
 
@@ -84,6 +86,7 @@ exports.getPresignedUrl = async (req, res) => {
 
     res.json(result);
   } catch (e) {
+    console.error("[upload.controller] getPresignedUrl error:", e.stack || e.message);
     res.status(400).json({ error: e.message });
   }
 };
@@ -91,7 +94,16 @@ exports.getPresignedUrl = async (req, res) => {
 // Подтвердить загрузку по presigned URL
 exports.confirmUpload = async (req, res) => {
   try {
-    const { bucketKey, mimeType, size, originalName, category, productId, orderId, quoteId } = req.body;
+    const {
+      bucketKey,
+      mimeType,
+      size,
+      originalName,
+      category,
+      productId,
+      orderId,
+      quoteId,
+    } = req.body;
 
     const file = await service.confirmUpload({
       bucketKey,
@@ -114,6 +126,7 @@ exports.confirmUpload = async (req, res) => {
 
     res.json(file);
   } catch (e) {
+    console.error("[upload.controller] confirmUpload error:", e.stack || e.message);
     res.status(400).json({ error: e.message });
   }
 };
@@ -124,6 +137,7 @@ exports.remove = async (req, res) => {
     const result = await service.deleteFile(req.params.fileId);
     res.json(result);
   } catch (e) {
+    console.error("[upload.controller] remove error:", e.stack || e.message);
     res.status(400).json({ error: e.message });
   }
 };

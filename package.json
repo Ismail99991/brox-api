@@ -31,7 +31,8 @@
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
     "pg": "^8.22.0",
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "sharp": "^0.35.2"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
